@@ -44,7 +44,7 @@
     button {
       padding: 12px 24px;
       font-size: 16px;
-      margin-left: 10px;
+      margin: 0 6px;
       background: #ff4500;
       color: white;
       border: none;
@@ -64,6 +64,18 @@
       padding: 12px;
       border-radius: 8px;
       font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delete-btn {
+      background: #c00;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
     }
     #wheel-container {
       position: relative;
@@ -77,7 +89,7 @@
       border-radius: 50%;
       border: 8px solid #ffd700;
       box-shadow: 0 0 40px rgba(255,215,0,0.5);
-      transition: transform 5s cubic-bezier(0.33, 1, 0.68, 1);
+      transition: transform 5.5s cubic-bezier(0.25, 0.1, 0.25, 1);
       overflow: hidden;
     }
     .slice {
@@ -114,6 +126,9 @@
       margin-top: 20px;
       min-height: 50px;
     }
+    #actions {
+      margin: 20px 0;
+    }
   </style>
 </head>
 <body>
@@ -129,55 +144,39 @@
     <h3>Jogadores inscritos:</h3>
     <ul id="participants"></ul>
 
+    <div id="actions">
+      <button onclick="clearAllPlayers()" style="background:#8B0000;">Limpar todos</button>
+    </div>
+
     <div id="wheel-container">
       <div id="pointer"></div>
       <div id="wheel"></div>
     </div>
 
-    <button onclick="spin()" style="font-size:20px; padding:15px 40px;">Girar Roleta!</button>
+    <button onclick="spin()" style="font-size:20px; padding:15px 40px; background:#006400;">Girar Roleta!</button>
 
     <div id="result"></div>
   </div>
 
   <script>
-    const API_URL = '/participants';
-    let players = [];
+    const STORAGE_KEY = 'clashRoyaleRoletaPlayers';
+    let players = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
-    async function loadPlayers() {
-      try {
-        const res = await fetch(API_URL);
-        players = await res.json();
-        renderPlayers();
-        renderWheel();
-      } catch(e) {
-        console.error("Erro ao carregar jogadores", e);
-      }
-    }
-
-    async function addPlayer() {
-      const input = document.getElementById('name');
-      const name = input.value.trim();
-      if (!name) return alert("Digite um nome!");
-
-      try {
-        await fetch(API_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ name })
-        });
-        input.value = '';
-        loadPlayers();
-      } catch(e) {
-        alert("Erro ao adicionar jogador");
-      }
+    function savePlayers() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+      renderPlayers();
+      renderWheel();
     }
 
     function renderPlayers() {
       const ul = document.getElementById('participants');
       ul.innerHTML = '';
-      players.forEach(p => {
+      players.forEach((p, index) => {
         const li = document.createElement('li');
-        li.textContent = p.name;
+        li.innerHTML = `
+          ${p}
+          <button class="delete-btn" onclick="removePlayer(${index})">Remover</button>
+        `;
         ul.appendChild(li);
       });
     }
@@ -193,9 +192,33 @@
         slice.className = 'slice';
         slice.style.transform = `rotate(${i * deg}deg)`;
         slice.style.background = i % 2 === 0 ? '#ff4500' : '#1e90ff';
-        slice.innerHTML = `<div style="transform:rotate(${deg/2 + 90}deg); width:200px; text-align:center;">${p.name}</div>`;
+        slice.innerHTML = `<div style="transform:rotate(${deg/2 + 90}deg); width:220px; text-align:center;">${p}</div>`;
         wheel.appendChild(slice);
       });
+    }
+
+    function addPlayer() {
+      const input = document.getElementById('name');
+      const name = input.value.trim();
+      if (!name) return alert("Digite um nome!");
+
+      players.push(name);
+      savePlayers();
+      input.value = '';
+    }
+
+    function removePlayer(index) {
+      if (confirm(`Remover ${players[index]}?`)) {
+        players.splice(index, 1);
+        savePlayers();
+      }
+    }
+
+    function clearAllPlayers() {
+      if (confirm("Limpar TODOS os jogadores?")) {
+        players = [];
+        savePlayers();
+      }
     }
 
     function spin() {
@@ -205,7 +228,7 @@
       const resultEl = document.getElementById('result');
       resultEl.textContent = '';
 
-      const spins = 5 + Math.floor(Math.random() * 6); // 5 a 10 voltas
+      const spins = 5 + Math.floor(Math.random() * 6); // 5–10 voltas
       const extra = Math.random() * 360;
       const total = (spins * 360) + extra;
 
@@ -218,14 +241,15 @@
         let winnerIndex = Math.floor((360 - normalized) / sliceDeg) % players.length;
         if (winnerIndex < 0) winnerIndex += players.length;
 
-        resultEl.textContent = `Vencedor: ${players[winnerIndex].name} !!!`;
+        resultEl.textContent = `Vencedor: ${players[winnerIndex]} !!!`;
       }, 5600);
     }
 
-    // Carrega ao abrir a página
-    loadPlayers();
+    // Inicializa
+    renderPlayers();
+    renderWheel();
   </script>
-  <p>By BARÃO US | DEV</p>
-  <p>DevSolutions | Vendas</p>
+  <p>BY BARÃO US | Dev</p>
+  <p>Loja: DevSolutions | Vendas</p>
 </body>
-</html>
+  </html>

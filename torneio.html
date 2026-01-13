@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Roleta Torneio Clash Royale</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #ffd700;
+      text-shadow: 0 0 10px #ff4500;
+      margin-bottom: 10px;
+    }
+    #container {
+      background: rgba(0,0,0,0.6);
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(255,215,0,0.3);
+      width: 100%;
+      max-width: 700px;
+    }
+    #form-add {
+      margin: 20px 0;
+    }
+    input {
+      padding: 12px;
+      font-size: 16px;
+      width: 220px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      background: #111;
+      color: white;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      margin-left: 10px;
+      background: #ff4500;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #ff6347; transform: scale(1.05); }
+    #participants {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+    #participants li {
+      background: rgba(255,255,255,0.1);
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    #wheel-container {
+      position: relative;
+      width: 380px;
+      height: 380px;
+      margin: 30px auto;
+    }
+    #wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 8px solid #ffd700;
+      box-shadow: 0 0 40px rgba(255,215,0,0.5);
+      transition: transform 5s cubic-bezier(0.33, 1, 0.68, 1);
+      overflow: hidden;
+    }
+    .slice {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transform-origin: 50% 50%;
+      clip-path: polygon(50% 50%, 100% 0, 100% 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 3px black;
+    }
+    #pointer {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 25px solid transparent;
+      border-right: 25px solid transparent;
+      border-bottom: 50px solid #ff0000;
+      filter: drop-shadow(0 0 8px red);
+      z-index: 10;
+    }
+    #result {
+      font-size: 32px;
+      font-weight: bold;
+      color: #ffd700;
+      margin-top: 20px;
+      min-height: 50px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <h1>Roleta de Sorteio - Torneio Clash Royale</h1>
+
+    <div id="form-add">
+      <input type="text" id="name" placeholder="Nome do jogador" autocomplete="off"/>
+      <button onclick="addPlayer()">Adicionar</button>
+    </div>
+
+    <h3>Jogadores inscritos:</h3>
+    <ul id="participants"></ul>
+
+    <div id="wheel-container">
+      <div id="pointer"></div>
+      <div id="wheel"></div>
+    </div>
+
+    <button onclick="spin()" style="font-size:20px; padding:15px 40px;">Girar Roleta!</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const API_URL = '/api/participants';
+    let players = [];
+
+    async function loadPlayers() {
+      try {
+        const res = await fetch(API_URL);
+        players = await res.json();
+        renderPlayers();
+        renderWheel();
+      } catch(e) {
+        console.error("Erro ao carregar jogadores", e);
+      }
+    }
+
+    async function addPlayer() {
+      const input = document.getElementById('name');
+      const name = input.value.trim();
+      if (!name) return alert("Digite um nome!");
+
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ name })
+        });
+        input.value = '';
+        loadPlayers();
+      } catch(e) {
+        alert("Erro ao adicionar jogador");
+      }
+    }
+
+    function renderPlayers() {
+      const ul = document.getElementById('participants');
+      ul.innerHTML = '';
+      players.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p.name;
+        ul.appendChild(li);
+      });
+    }
+
+    function renderWheel() {
+      const wheel = document.getElementById('wheel');
+      wheel.innerHTML = '';
+      if (players.length === 0) return;
+
+      const deg = 360 / players.length;
+      players.forEach((p, i) => {
+        const slice = document.createElement('div');
+        slice.className = 'slice';
+        slice.style.transform = `rotate(${i * deg}deg)`;
+        slice.style.background = i % 2 === 0 ? '#ff4500' : '#1e90ff';
+        slice.innerHTML = `<div style="transform:rotate(${deg/2 + 90}deg); width:200px; text-align:center;">${p.name}</div>`;
+        wheel.appendChild(slice);
+      });
+    }
+
+    function spin() {
+      if (players.length < 2) return alert("Adicione pelo menos 2 jogadores!");
+
+      const wheel = document.getElementById('wheel');
+      const resultEl = document.getElementById('result');
+      resultEl.textContent = '';
+
+      const spins = 5 + Math.floor(Math.random() * 6); // 5 a 10 voltas
+      const extra = Math.random() * 360;
+      const total = (spins * 360) + extra;
+
+      wheel.style.transition = 'transform 5.5s cubic-bezier(0.25, 0.1, 0.25, 1)';
+      wheel.style.transform = `rotate(${total}deg)`;
+
+      setTimeout(() => {
+        const normalized = total % 360;
+        const sliceDeg = 360 / players.length;
+        let winnerIndex = Math.floor((360 - normalized) / sliceDeg) % players.length;
+        if (winnerIndex < 0) winnerIndex += players.length;
+
+        resultEl.textContent = `Vencedor: ${players[winnerIndex].name} !!!`;
+      }, 5600);
+    }
+
+    // Carrega ao abrir a página
+    loadPlayers();
+  </script>
+</body>
+</html>
